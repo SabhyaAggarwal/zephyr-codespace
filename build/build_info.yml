@@ -1,0 +1,50 @@
+cmake:
+  application:
+    configuration-dir: /workspaces/zephyr-codespace/app
+    source-dir: /workspaces/zephyr-codespace/app
+  board:
+    name: frdm_mcxn236
+    qualifiers: mcxn236
+    revision: 
+  devicetree:
+    bindings-dirs:
+     - /workspaces/zephyr-codespace/zephyr/dts/bindings
+    files:
+     - /workspaces/zephyr-codespace/zephyr/boards/nxp/frdm_mcxn236/frdm_mcxn236.dts
+    include-dirs:
+     - /workspaces/zephyr-codespace/modules/hal/atmel/include
+     - /workspaces/zephyr-codespace/modules/hal/gigadevice/include
+     - /workspaces/zephyr-codespace/modules/hal/microchip/dts
+     - /workspaces/zephyr-codespace/modules/hal/nuvoton/dts
+     - /workspaces/zephyr-codespace/modules/hal/nxp/dts
+     - /workspaces/zephyr-codespace/modules/hal/stm32/dts
+     - /workspaces/zephyr-codespace/zephyr/include
+     - /workspaces/zephyr-codespace/zephyr/include/zephyr
+     - /workspaces/zephyr-codespace/zephyr/dts/common
+     - /workspaces/zephyr-codespace/zephyr/dts/x86
+     - /workspaces/zephyr-codespace/zephyr/dts/xtensa
+     - /workspaces/zephyr-codespace/zephyr/dts/sparc
+     - /workspaces/zephyr-codespace/zephyr/dts/riscv
+     - /workspaces/zephyr-codespace/zephyr/dts/posix
+     - /workspaces/zephyr-codespace/zephyr/dts/nios2
+     - /workspaces/zephyr-codespace/zephyr/dts/arm64
+     - /workspaces/zephyr-codespace/zephyr/dts/arm
+     - /workspaces/zephyr-codespace/zephyr/dts/arc
+     - /workspaces/zephyr-codespace/zephyr/dts
+  kconfig:
+    files:
+     - /workspaces/zephyr-codespace/zephyr/boards/nxp/frdm_mcxn236/frdm_mcxn236_defconfig
+     - /workspaces/zephyr-codespace/app/prj.conf
+    user-files:
+     - /workspaces/zephyr-codespace/app/prj.conf
+  toolchain:
+    name: zephyr
+    path: /workspaces/zephyr-codespace/.zephyr-sdk/zephyr-sdk-0.16.8
+  zephyr:
+    version: 4.0.0
+    zephyr-base: /workspaces/zephyr-codespace/zephyr
+version: 0.1.0
+west:
+  command: /home/codespace/.local/bin/west build -b frdm_mcxn236 /workspaces/zephyr-codespace/app
+  topdir: /workspaces/zephyr-codespace
+  version: 1.5.0
