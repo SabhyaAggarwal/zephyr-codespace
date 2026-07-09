@@ -99,7 +99,8 @@ jobs:
           # Adjust APP_DIR/BOARD to your project
           APP_DIR="$GITHUB_WORKSPACE"
           BOARD="frdm_k64f"
-          west build -s "$APP_DIR" -b "$BOARD" -d build
+          cd ../zephyrproject
+          west build -s "$APP_DIR" -b "$BOARD" -d "$APP_DIR/build"
 
       # Optional: if your app uses west manifest from this repo, use this instead of example build:
       # - name: West update from app manifest (optional)
