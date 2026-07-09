@@ -1,8 +1,6 @@
 {
   "name": "Zephyr Cloud Compiler",
-  "build": {
-    "dockerfile": "Dockerfile"
-  },
+  "image": "ghcr.io/devcontainers/base:ubuntu-22.04",
   "customizations": {
     "vscode": {
       "extensions": [
@@ -12,6 +10,6 @@
       ]
     }
   },
-  "postCreateCommand": "west init -m https://github.com --mr v3.7.0 zephyrproject && cd zephyrproject && west update && west zephyr-export && pip3 install -r zephyr/scripts/requirements.txt",
+  "postCreateCommand": "bash .devcontainer/setup-zephyr.sh",
   "remoteUser": "vscode"
 }

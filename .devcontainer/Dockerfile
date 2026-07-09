@@ -1,26 +1,33 @@
-# Explicitly use the canonical global domain format to prevent parsing errors
-FROM docker.io/visualstudio/devcontainers/base:ubuntu-22.04
+#!/bin/bash
+set -e
 
 ARG ZEPHYR_SDK_VERSION=0.16.8
 
-# Install base build dependencies
-RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
-    && apt-get -y install --no-install-recommends \
-       git cmake ninja-build gperf ccache dfu-util \
-       python3-pip python3-setuptools python3-tk python3-wheel \
-       xz-utils file make gcc gcc-multilib g++-multilib libsdl2-dev \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
+echo "=== Installing Dependencies ==="
+sudo apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get -y install --no-install-recommends \
+   git cmake ninja-build gperf ccache dfu-util \
+   python3-pip python3-setuptools python3-tk python3-wheel \
+   xz-utils file make gcc gcc-multilib g++-multilib libsdl2-dev
 
-# Install West tool
-RUN pip3 install west
+echo "=== Installing West ==="
+pip3 install --user west
+export PATH=$PATH:$HOME/.local/bin
 
-# Download and install Zephyr SDK targeting ARM architectures
-WORKDIR /opt
-RUN wget -q https://github.com{ZEPHYR_SDK_VERSION}/zephyr-sdk-${ZEPHYR_SDK_VERSION}_linux-x86_64_minimal.tar.xz \
-    && tar -xf zephyr-sdk-${ZEPHYR_SDK_VERSION}_linux-x86_64_minimal.tar.xz \
-    && rm zephyr-sdk-${ZEPHYR_SDK_VERSION}_linux-x86_64_minimal.tar.xz \
-    && cd zephyr-sdk-${ZEPHYR_SDK_VERSION} \
-    && ./setup.sh -t arm-zephyr-eabi
+echo "=== Downloading Zephyr SDK ==="
+cd /tmp
+wget -q https://github.com{ZEPHYR_SDK_VERSION}/zephyr-sdk-${ZEPHYR_SDK_VERSION}_linux-x86_64_minimal.tar.xz
+tar -xf zephyr-sdk-${ZEPHYR_SDK_VERSION}_linux-x86_64_minimal.tar.xz
+mkdir -p $HOME/zephyr-sdk
+mv zephyr-sdk-${ZEPHYR_SDK_VERSION}/* $HOME/zephyr-sdk/
 
-# Configure environment variables
-ENV ZEPHYR_SDK_INSTALL_DIR=/opt/zephyr-sdk-${ZEPHYR_SDK_VERSION}
+echo "=== Initializing Zephyr Workspace ==="
+cd $CONTAINER_WORKSPACE_FOLDER
+west init -m https://github.com --mr v3.7.0 zephyrproject
+cd zephyrproject
+west update
+west zephyr-export
+pip3 install --user -r zephyr/scripts/requirements.txt
+
+echo "export ZEPHYR_SDK_INSTALL_DIR=$HOME/zephyr-sdk" >> $HOME/.bashrc
+echo "export PATH=$PATH:$HOME/.local/bin" >> $HOME/.bashrc
+echo "=== Setup Complete! ==="
