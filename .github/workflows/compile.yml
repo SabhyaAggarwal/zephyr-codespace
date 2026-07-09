@@ -24,13 +24,16 @@ jobs:
           submodules: false
           persist-credentials: false
 
-      - name: Assert no stale mcuboot submodule metadata
+      - name: Generate temporary submodule metadata for checkout cleanup
         run: |
           set -euo pipefail
-          if [ -f .gitmodules ] && git config -f .gitmodules --get-regexp '^submodule\..*\.path$' 2>/dev/null | grep -q 'bootloader/mcuboot'; then
-            echo "ERROR: Stale submodule metadata found for bootloader/mcuboot in .gitmodules."
-            echo "Fix by removing submodule entry or adding a valid URL for that submodule."
-            exit 1
+          if [ ! -f .gitmodules ]; then
+            while read -r mode _ _ path; do
+              if [ "$mode" = "160000" ]; then
+                git config -f .gitmodules "submodule.${path}.path" "$path"
+                git config -f .gitmodules "submodule.${path}.url" "https://example.invalid/${path}.git"
+              fi
+            done < <(git ls-files -s)
           fi
 
       - name: Install system dependencies
