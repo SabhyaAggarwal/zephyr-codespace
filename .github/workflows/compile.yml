@@ -2,62 +2,121 @@ name: NXP Zephyr Auto Compiler
 
 on:
   push:
-    branches: [ main ]
   pull_request:
-    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
-  build-binary:
-    runs-on: ubuntu-22.04
+  build:
+    runs-on: ubuntu-24.04
+
+    env:
+      # Pin versions to avoid drift; update intentionally.
+      ZEPHYR_REVISION: v3.7.0
+      ZEPHYR_SDK_VERSION: 0.16.8
+      ZEPHYR_TOOLCHAIN_VARIANT: zephyr
+
     steps:
-      - name: Checkout Code
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
+          fetch-depth: 0
+          # IMPORTANT: west manages Zephyr modules; avoid submodule cleanup failures.
           submodules: false
+          persist-credentials: false
 
-      - name: Install System Utilities
+      - name: Install system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            ninja-build gperf device-tree-compiler wget xz-utils file make gcc git python3-pip
+            git cmake ninja-build gperf ccache dfu-util device-tree-compiler \
+            wget xz-utils file make gcc gcc-multilib g++-multilib \
+            libsdl2-dev libmagic1
 
-      - name: Install West Workspace Utility
-        run: |
-          pip3 install --user west
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
 
-      - name: Cache Zephyr SDK Cross-Compiler
-        id: cache-sdk
+      - name: Cache Zephyr SDK
+        id: cache-zephyr-sdk
         uses: actions/cache@v4
         with:
-          path: ~/zephyr-sdk-0.16.8
-          key: zephyr-sdk-0.16.8-arm
+          path: ~/zephyr-sdk-${{ env.ZEPHYR_SDK_VERSION }}
+          key: zephyr-sdk-${{ env.ZEPHYR_SDK_VERSION }}-${{ runner.os }}-${{ runner.arch }}
 
-      - name: Download Toolchain Archive (If Cache Miss)
-        if: steps.cache-sdk.outputs.cache-hit != 'true'
+      - name: Install Zephyr SDK
+        if: steps.cache-zephyr-sdk.outputs.cache-hit != 'true'
         run: |
-          cd $HOME
-          wget -q "https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v0.16.8/zephyr-sdk-0.16.8_linux-x86_64_minimal.tar.xz"
-          tar -xf zephyr-sdk-0.16.8_linux-x86_64_minimal.tar.xz
-          rm zephyr-sdk-0.16.8_linux-x86_64_minimal.tar.xz
-          ./zephyr-sdk-0.16.8/setup.sh -t arm-zephyr-eabi -c
+          set -euxo pipefail
+          cd ~
+          wget -q https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v${ZEPHYR_SDK_VERSION}/zephyr-sdk-${ZEPHYR_SDK_VERSION}_linux-x86_64.tar.xz
+          tar xf zephyr-sdk-${ZEPHYR_SDK_VERSION}_linux-x86_64.tar.xz
+          rm -f zephyr-sdk-${ZEPHYR_SDK_VERSION}_linux-x86_64.tar.xz
+          ~/zephyr-sdk-${ZEPHYR_SDK_VERSION}/setup.sh -t all -h -c
 
-      - name: Prepare Zephyr workspace
+      - name: Initialize west workspace
         run: |
-          git clone --depth 1 --branch v3.7.0 https://github.com/zephyrproject-rtos/zephyr.git zephyrproject/zephyr
-          cd zephyrproject/zephyr
-          west config manifest.project-filter "+zephyr,+cmsis,+hal_nxp,+pinctrl"
+          set -euxo pipefail
+          # Create a sibling Zephyr workspace; keep app repo untouched.
+          mkdir -p ../zephyrproject
+          cd ../zephyrproject
+          if [ ! -d .west ]; then
+            west init -m https://github.com/zephyrproject-rtos/zephyr --mr ${ZEPHYR_REVISION}
+          fi
           west update
-          pip3 install --user -r scripts/requirements-core.txt
+          west zephyr-export
 
-      - name: Run Build
+      - name: Install Zephyr Python requirements
         run: |
-          export ZEPHYR_SDK_INSTALL_DIR="$HOME/zephyr-sdk-0.16.8"
-          cd zephyrproject/zephyr
-          west build -b frdm_mcxn236 ${{ github.workspace }}/app
+          set -euxo pipefail
+          cd ../zephyrproject/zephyr
+          python -m pip install --upgrade pip
+          python -m pip install -r scripts/requirements.txt
 
-      - name: Upload Flash-Ready Artifact
+      - name: Verify toolchain
+        run: |
+          set -euxo pipefail
+          test -d ~/zephyr-sdk-${ZEPHYR_SDK_VERSION}
+          echo "ZEPHYR_SDK_INSTALL_DIR=$HOME/zephyr-sdk-${ZEPHYR_SDK_VERSION}" >> "$GITHUB_ENV"
+          echo "ZEPHYR_BASE=$GITHUB_WORKSPACE/../zephyrproject/zephyr" >> "$GITHUB_ENV"
+
+      - name: Build (example)
+        run: |
+          set -euxo pipefail
+          # Adjust APP_DIR/BOARD to your project
+          APP_DIR="$GITHUB_WORKSPACE"
+          BOARD="frdm_k64f"
+          west build -s "$APP_DIR" -b "$BOARD" -d build
+
+      # Optional: if your app uses west manifest from this repo, use this instead of example build:
+      # - name: West update from app manifest (optional)
+      #   run: |
+      #     set -euxo pipefail
+      #     west init -l "$GITHUB_WORKSPACE" ../workspace
+      #     cd ../workspace
+      #     west update
+      #     west zephyr-export
+      #     python -m pip install -r zephyr/scripts/requirements.txt
+      #     west build -s "$GITHUB_WORKSPACE" -b frdm_k64f -d build
+
+      - name: Upload build artifacts
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: frdm-mcxn236-rainbow-binary
-          path: zephyrproject/zephyr/build/zephyr/zephyr.elf
+          name: zephyr-build
+          path: |
+            build/zephyr/zephyr.elf
+            build/zephyr/zephyr.hex
+            build/zephyr/zephyr.bin
+          if-no-files-found: ignore
+
+      # Defensive cleanup: never fail job on cleanup.
+      - name: Safe cleanup git config/submodules
+        if: always()
+        run: |
+          set +e
+          git config --local --unset-all core.sshCommand || true
+          git submodule sync --recursive || true
+          git submodule deinit -f --all || true
+          exit 0
