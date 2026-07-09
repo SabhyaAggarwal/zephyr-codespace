@@ -69,6 +69,7 @@ jobs:
       - name: Initialize west workspace
         run: |
           set -euxo pipefail
+          python -m pip install west
           # Create a sibling Zephyr workspace; keep app repo untouched.
           mkdir -p ../zephyrproject
           cd ../zephyrproject
