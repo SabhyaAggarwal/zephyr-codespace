@@ -1,4 +1,5 @@
-FROM ://microsoft.com
+# Explicitly use the canonical global domain format to prevent parsing errors
+FROM docker.io/visualstudio/devcontainers/base:ubuntu-22.04
 
 ARG ZEPHYR_SDK_VERSION=0.16.8
 
