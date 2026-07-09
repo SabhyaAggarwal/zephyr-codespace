@@ -1,0 +1,62 @@
+name: NXP Zephyr Auto Compiler
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-binary:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install System Utilities
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            ninja-build gperf device-tree-compiler wget xz-utils file make gcc
+
+      - name: Install West Workspace Utility
+        run: |
+          pip3 install --user west
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Cache Zephyr SDK Cross-Compiler
+        id: cache-sdk
+        uses: actions/cache@v4
+        with:
+          path: ~/zephyr-sdk-0.16.8
+          key: zephyr-sdk-0.16.8-arm
+
+      - name: Download Toolchain Archive (If Cache Miss)
+        if: steps.cache-sdk.outputs.cache-hit != 'true'
+        run: |
+          cd $HOME
+          wget -q "https://github.com"
+          tar -xf zephyr-sdk-0.16.8_linux-x86_64_minimal.tar.xz
+          rm zephyr-sdk-0.16.8_linux-x86_64_minimal.tar.xz
+          ./zephyr-sdk-0.16.8/setup.sh -t arm-zephyr-eabi -c
+
+      - name: Initialize Minimal NXP Project Layout
+        run: |
+          west init -m https://github.com --mr v3.7.0 zephyrproject
+          cd zephyrproject
+          west config manifest.project-filter "+zephyr,+cmsis,+hal_nxp,+pinctrl"
+          west update --no-history -v
+          pip3 install --user -r zephyr/scripts/requirements-core.txt
+
+      - name: Run Build
+        env:
+          ZEPHYR_SDK_INSTALL_DIR: ${{ github.workspace }}/../zephyr-sdk-0.16.8
+        run: |
+          cd zephyrproject/zephyr
+          west build -b frdm_mcxn236 ${{ github.workspace }}/app
+
+      - name: Upload Flash-Ready Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frdm-mcxn236-rainbow-binary
+          path: zephyrproject/zephyr/build/zephyr/zephyr.elf
