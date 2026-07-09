@@ -47,7 +47,7 @@ jobs:
           git clone --depth 1 --branch v3.7.0 https://github.com/zephyrproject-rtos/zephyr.git zephyrproject/zephyr
           cd zephyrproject/zephyr
           west config manifest.project-filter "+zephyr,+cmsis,+hal_nxp,+pinctrl"
-          west update --no-history -v
+          west update
           pip3 install --user -r scripts/requirements-core.txt
 
       - name: Run Build
