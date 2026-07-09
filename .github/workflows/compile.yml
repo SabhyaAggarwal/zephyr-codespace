@@ -20,9 +20,18 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          # IMPORTANT: west manages Zephyr modules; avoid submodule cleanup failures.
+          # IMPORTANT: west manages Zephyr modules; avoid submodule checkout.
           submodules: false
           persist-credentials: false
+
+      - name: Assert no stale mcuboot submodule metadata
+        run: |
+          set -euo pipefail
+          if [ -f .gitmodules ] && git config -f .gitmodules --get-regexp '^submodule\..*\.path$' 2>/dev/null | grep -q 'bootloader/mcuboot'; then
+            echo "ERROR: Stale submodule metadata found for bootloader/mcuboot in .gitmodules."
+            echo "Fix by removing submodule entry or adding a valid URL for that submodule."
+            exit 1
+          fi
 
       - name: Install system dependencies
         run: |
