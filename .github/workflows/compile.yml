@@ -12,12 +12,14 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          submodules: false
 
       - name: Install System Utilities
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            ninja-build gperf device-tree-compiler wget xz-utils file make gcc
+            ninja-build gperf device-tree-compiler wget xz-utils file make gcc git python3-pip
 
       - name: Install West Workspace Utility
         run: |
@@ -40,13 +42,13 @@ jobs:
           rm zephyr-sdk-0.16.8_linux-x86_64_minimal.tar.xz
           ./zephyr-sdk-0.16.8/setup.sh -t arm-zephyr-eabi -c
 
-      - name: Initialize Minimal NXP Project Layout
+      - name: Prepare Zephyr workspace
         run: |
-          west init -m https://github.com/zephyrproject-rtos/zephyr --mr v3.7.0 zephyrproject
-          cd zephyrproject
+          git clone --depth 1 --branch v3.7.0 https://github.com/zephyrproject-rtos/zephyr.git zephyrproject/zephyr
+          cd zephyrproject/zephyr
           west config manifest.project-filter "+zephyr,+cmsis,+hal_nxp,+pinctrl"
           west update --no-history -v
-          pip3 install --user -r zephyr/scripts/requirements-core.txt
+          pip3 install --user -r scripts/requirements-core.txt
 
       - name: Run Build
         run: |
