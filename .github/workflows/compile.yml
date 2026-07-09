@@ -22,7 +22,7 @@ jobs:
           fetch-depth: 0
           # IMPORTANT: west manages Zephyr modules; avoid submodule checkout.
           submodules: false
-          persist-credentials: false
+          persist-credentials: true
 
       - name: Generate temporary submodule metadata for checkout cleanup
         run: |
