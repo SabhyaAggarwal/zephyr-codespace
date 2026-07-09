@@ -1,0 +1,17 @@
+{
+  "name": "Zephyr Cloud Compiler",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.cpptools",
+        "twxs.cmake",
+        "marus25.cortex-debug"
+      ]
+    }
+  },
+  "postCreateCommand": "west init -m https://github.com --mr v3.7.0 zephyrproject && cd zephyrproject && west update && west zephyr-export && pip3 install -r zephyr/scripts/requirements.txt",
+  "remoteUser": "vscode"
+}
