@@ -1,6 +1,6 @@
 {
   "name": "Zephyr Cloud Compiler",
-  "image": "ghcr.io/devcontainers/base:ubuntu-22.04",
+  "image": "://microsoft.com",
   "customizations": {
     "vscode": {
       "extensions": [
