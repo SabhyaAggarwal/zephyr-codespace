@@ -97,10 +97,10 @@ jobs:
         run: |
           set -euxo pipefail
           # Adjust APP_DIR/BOARD to your project
-          APP_DIR="$GITHUB_WORKSPACE"
+          APP_DIR="$GITHUB_WORKSPACE/app"
           BOARD="frdm_k64f"
           cd ../zephyrproject
-          west build -s "$APP_DIR" -b "$BOARD" -d "$APP_DIR/build"
+          west build -s "$APP_DIR" -b "$BOARD" -d "$GITHUB_WORKSPACE/build"
 
       # Optional: if your app uses west manifest from this repo, use this instead of example build:
       # - name: West update from app manifest (optional)
