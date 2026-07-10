@@ -22,19 +22,7 @@ jobs:
           fetch-depth: 0
           # IMPORTANT: west manages Zephyr modules; avoid submodule checkout.
           submodules: false
-          persist-credentials: false
-
-      - name: Generate temporary submodule metadata for checkout cleanup
-        run: |
-          set -euo pipefail
-          if [ ! -f .gitmodules ]; then
-            while read -r mode _ _ path; do
-              if [ "$mode" = "160000" ]; then
-                git config -f .gitmodules "submodule.${path}.path" "$path"
-                git config -f .gitmodules "submodule.${path}.url" "https://example.invalid/${path}.git"
-              fi
-            done < <(git ls-files -s)
-          fi
+          persist-credentials: true
 
       - name: Install system dependencies
         run: |
@@ -48,7 +36,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-          cache: "pip"
 
       - name: Cache Zephyr SDK
         id: cache-zephyr-sdk
@@ -70,6 +57,7 @@ jobs:
       - name: Initialize west workspace
         run: |
           set -euxo pipefail
+          python -m pip install west
           # Create a sibling Zephyr workspace; keep app repo untouched.
           mkdir -p ../zephyrproject
           cd ../zephyrproject
@@ -97,20 +85,14 @@ jobs:
         run: |
           set -euxo pipefail
           # Adjust APP_DIR/BOARD to your project
-          APP_DIR="$GITHUB_WORKSPACE"
+          APP_DIR="$GITHUB_WORKSPACE/app"
           BOARD="frdm_k64f"
-          west build -s "$APP_DIR" -b "$BOARD" -d build
 
-      # Optional: if your app uses west manifest from this repo, use this instead of example build:
-      # - name: West update from app manifest (optional)
-      #   run: |
-      #     set -euxo pipefail
-      #     west init -l "$GITHUB_WORKSPACE" ../workspace
-      #     cd ../workspace
-      #     west update
-      #     west zephyr-export
-      #     python -m pip install -r zephyr/scripts/requirements.txt
-      #     west build -s "$GITHUB_WORKSPACE" -b frdm_k64f -d build
+          # Ensure no stale build dir from another absolute path
+          rm -rf "$GITHUB_WORKSPACE/build"
+
+          cd ../zephyrproject
+          west build -s "$APP_DIR" -b "$BOARD" -d "$GITHUB_WORKSPACE/build" --pristine=always
 
       - name: Upload build artifacts
         if: always()
@@ -124,11 +106,9 @@ jobs:
           if-no-files-found: ignore
 
       # Defensive cleanup: never fail job on cleanup.
-      - name: Safe cleanup git config/submodules
+      - name: Safe cleanup git config
         if: always()
         run: |
           set +e
           git config --local --unset-all core.sshCommand || true
-          git submodule sync --recursive || true
-          git submodule deinit -f --all || true
           exit 0
