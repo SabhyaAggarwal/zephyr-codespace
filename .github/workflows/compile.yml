@@ -22,7 +22,7 @@ jobs:
           fetch-depth: 0
           # IMPORTANT: west manages Zephyr modules; avoid submodule checkout.
           submodules: false
-          persist-credentials: false
+          persist-credentials: true
 
       - name: Generate temporary submodule metadata for checkout cleanup
         run: |
@@ -48,7 +48,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-          cache: "pip"
 
       - name: Cache Zephyr SDK
         id: cache-zephyr-sdk
@@ -70,6 +69,7 @@ jobs:
       - name: Initialize west workspace
         run: |
           set -euxo pipefail
+          python -m pip install west
           # Create a sibling Zephyr workspace; keep app repo untouched.
           mkdir -p ../zephyrproject
           cd ../zephyrproject
@@ -97,9 +97,10 @@ jobs:
         run: |
           set -euxo pipefail
           # Adjust APP_DIR/BOARD to your project
-          APP_DIR="$GITHUB_WORKSPACE"
+          APP_DIR="$GITHUB_WORKSPACE/app"
           BOARD="frdm_k64f"
-          west build -s "$APP_DIR" -b "$BOARD" -d build
+          cd ../zephyrproject
+          west build -s "$APP_DIR" -b "$BOARD" -d "$GITHUB_WORKSPACE/build"
 
       # Optional: if your app uses west manifest from this repo, use this instead of example build:
       # - name: West update from app manifest (optional)
