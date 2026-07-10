@@ -100,7 +100,9 @@ jobs:
           APP_DIR="$GITHUB_WORKSPACE/app"
           BOARD="frdm_k64f"
           cd ../zephyrproject
-          west build -s "$APP_DIR" -b "$BOARD" -d "$GITHUB_WORKSPACE/build"
+          # Remove any cached/committed build folder from checkout to avoid application path mismatch
+          rm -rf "$GITHUB_WORKSPACE/build"
+          west build -p always -s "$APP_DIR" -b "$BOARD" -d "$GITHUB_WORKSPACE/build"
 
       # Optional: if your app uses west manifest from this repo, use this instead of example build:
       # - name: West update from app manifest (optional)
